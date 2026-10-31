@@ -1,0 +1,21 @@
+构建命令：scripts/build.ps1 -SkipInstall -SkipTests
+TypeScript 类型检查：成功
+Vite 生产构建：成功（1575 modules transformed）
+Windows amd64 Go 生产编译：成功
+第三方许可证收集：成功
+Windows 产品资源：成功（9 个 RT_ICON、1 个 RT_GROUP_ICON、1 个 RT_VERSION）
+产品属性：DeskGrid / DeskGrid 桌面整理工具 / DeskGrid.exe / 1.0.0.0
+图标尺寸：16、20、24、32、40、48、64、128、256px
+PowerShell 构建/安装/卸载/打包脚本：静态语法解析成功，未执行安装/卸载
+
+程序：bin/DeskGrid.exe
+SHA256：E55AA1BBCC609C3D0F404956734B560CB1EAABD5AFD2A67671BB6C12F46CE5E3
+分发包：release/DeskGrid-windows-amd64.zip
+
+本批：产品名称、模块/前端内部标识与产物统一为 DeskGrid；保留旧配置和跨版本单实例兼容；原创 EXE 图标及随任务栏主题切换的托盘图标。
+图标已目视检查素材预览；EXE 资源与版本属性只读检查成功。
+未新增或运行测试；未启动 DeskGrid/Sticker、外部程序或执行实际文件转移；未执行安装/卸载，未改动当前用户注册表及配置。
+实际任务栏图标切换、Shell 注册更新与配置兼容由用户运行新版确认。
+
+2026-10-31 发布整理：源码整理到独立 DeskGrid 目录；README 改为面向新用户，构建说明移至 docs/BUILDING.md。发布脚本改为生成 release 目录、解压版、ZIP、SHA256SUMS.txt 与发布说明。
+本次整理没有修改应用源码，沿用上面已编译 EXE；未重新启动程序或运行测试。

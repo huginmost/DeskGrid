@@ -1,0 +1,11 @@
+export type Entry={id:string,type:'path'|'group',path?:string,displayName?:string,name?:string,items?:Entry[]};
+export type Appearance={opacity:number,scale:number,cornerRadius?:number,titleColor:string,titleTextColor:string,backgroundColor:string,folderColor:string,textColor:string};
+export type Bounds={x:number,y:number,width:number,height:number,unit:'dip',displayId:string};
+export type WindowDef={schemaVersion:number,id:string,revision:number,type:'start'|'collection'|'folder',title:string,titleMode:'auto'|'custom',layout:'grid'|'list',bounds:Bounds,expandedSize:{width:number,height:number},collapsed:boolean,collapsedHeight?:number,positionLocked:boolean,skipRecycleConfirmation?:boolean,showFileExtensions?:boolean,iconsOnly?:boolean,items:Entry[],rootPath:string,currentPath:string,expandedPaths:string[],appearanceOverrides:Partial<Appearance>,menuOverrides:Record<string,MenuPatch>};
+export type FileEntry={path:string,name:string,isDir:boolean,isLink:boolean,hidden:boolean,size:number,modified:string,icon?:string,error?:string};
+export type Drive={path:string,name:string,total:number,free:number,error?:string};
+export type MenuAction={id:string,name:string,enabled:boolean,group?:string,custom?:boolean,mode?:'program'|'cmd'|'powershell',template?:string};
+export type MenuPatch={order?:string[],actions?:Record<string,Partial<MenuAction>>};
+export type Global={schemaVersion:number,theme:'system'|'light'|'dark',appearance:Partial<Appearance>,menus:Record<string,MenuPatch>,hiddenFiles:boolean,hideStartWindow?:boolean,reducedMotion:boolean,desktopMode:boolean,autoStart:boolean,shellIntegration:boolean,hotkey:string,peekHotkey?:string};
+export type Snapshot={window?:WindowDef,windows:WindowDef[],openWindowIds:string[],global:Global,appearance:Appearance,drives:Drive[],warnings:string[],status:{desktop:string,hotkey:string,peekHotkey?:string,autoStart:string,shellIntegration:string},pendingPins:string[],systemDark:boolean};
+export type Row={id:string,name:string,path?:string,kind:'file'|'folder'|'drive'|'group',depth:number,entry?:Entry,file?:FileEntry,system?:boolean,error?:string,icon?:string,creating?:boolean};

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 16 16">
+  <title>DeskGrid tray</title>
+  <g fill="#edf4ff"><rect x="2" y="2" width="6" height="4" rx="1"/><rect x="10" y="2" width="4" height="4" rx="1"/><rect x="2" y="8" width="6" height="6" rx="1"/></g>
+  <rect x="10" y="8" width="4" height="6" rx="1" fill="#68e7d1"/>
+</svg>
