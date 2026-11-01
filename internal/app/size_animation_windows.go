@@ -6,8 +6,8 @@ import (
 	"math"
 	"time"
 
-	"github.com/wailsapp/wails/v3/pkg/application"
 	native "deskgrid/internal/windows"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type windowSizeAnimation struct {
@@ -76,6 +76,7 @@ func (h *Desktop) animateWindowSize(id string, win *application.WebviewWindow, a
 		}
 		if finished {
 			h.scheduleGeometry(id)
+			go application.InvokeAsync(h.correctAll)
 			return
 		}
 	}

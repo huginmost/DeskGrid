@@ -22,6 +22,6 @@ $shortcut.WorkingDirectory = $installRoot
 $shortcut.Save()
 $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\DeskGrid'
 New-Item -Path $key -Force | Out-Null
-$values = @{DisplayName='DeskGrid';DisplayVersion='1.0.0';Publisher='DeskGrid';InstallLocation=$installRoot;DisplayIcon=(Join-Path $installRoot 'DeskGrid.exe');UninstallString=('powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' + (Join-Path $installRoot 'uninstall.ps1') + '"')}
+$values = @{DisplayName='DeskGrid';DisplayVersion='1.0.1';Publisher='DeskGrid';InstallLocation=$installRoot;DisplayIcon=(Join-Path $installRoot 'DeskGrid.exe');UninstallString=('powershell.exe -NoProfile -ExecutionPolicy Bypass -File "' + (Join-Path $installRoot 'uninstall.ps1') + '"')}
 foreach ($name in $values.Keys) { Set-ItemProperty -LiteralPath $key -Name $name -Value $values[$name] }
 Write-Output "已安装到 $installRoot。自启和资源管理器集成请在 DeskGrid 设置中按需开启。"

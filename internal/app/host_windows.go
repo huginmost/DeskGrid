@@ -33,6 +33,7 @@ type Desktop struct {
 	main             map[string]*application.WebviewWindow
 	settings         map[string]*application.WebviewWindow
 	timers           map[string]*time.Timer
+	geometryEdits    map[string]*geometryEdit
 	tray             *application.SystemTray
 	hidden           bool
 	quitting         bool
@@ -128,7 +129,8 @@ func NewDesktop(store *config.Store, configDir string) *Desktop {
 				return result, true
 			}
 			if msg == 0x7e || msg == 0x2e0 || msg == 0x1a {
-				go h.correctAll()
+				// Run after Wails has refreshed its display/DPI cache.
+				go application.InvokeAsync(h.correctAll)
 			}
 			return 0, false
 		}},
@@ -308,6 +310,7 @@ func (h *Desktop) Open(w model.Window) error {
 			delete(h.pixelRatios, w.ID)
 			delete(h.showing, w.ID)
 			delete(h.applied, w.ID)
+			delete(h.geometryEdits, w.ID)
 			delete(h.desktopParents, w.ID)
 			delete(h.mountErrors, w.ID)
 		}
@@ -367,6 +370,7 @@ func (h *Desktop) Close(id string) {
 	delete(h.pixelRatios, id)
 	delete(h.showing, id)
 	delete(h.applied, id)
+	delete(h.geometryEdits, id)
 	delete(h.desktopParents, id)
 	delete(h.mountErrors, id)
 	key := id
@@ -656,6 +660,11 @@ func (h *Desktop) workAreas() []native.WorkArea {
 }
 func (h *Desktop) scheduleGeometry(id string) {
 	h.mu.Lock()
+	edit := h.geometryEdits[id]
+	if edit == nil || edit.active || !edit.ready {
+		h.mu.Unlock()
+		return // Display changes, startup, remounts and animations are not user edits.
+	}
 	if old := h.timers[id]; old != nil {
 		old.Stop()
 	}
@@ -663,54 +672,57 @@ func (h *Desktop) scheduleGeometry(id string) {
 	h.mu.Unlock()
 }
 func (h *Desktop) saveGeometry(id string) {
-	h.mu.Lock()
-	win := h.main[id]
-	transition := h.peekTransition
-	animating := h.applied[id].sizeAnimation != nil
-	h.mu.Unlock()
-	if win == nil || transition || animating {
-		return
-	}
 	h.Service.mu.Lock()
 	defer h.Service.mu.Unlock()
-	// An older debounce may have been waiting for UpdateWindow's service lock
-	// while that update started an animation. Never persist its intermediate size.
 	h.mu.Lock()
-	animating = h.applied[id].sizeAnimation != nil || h.peekTransition || h.main[id] != win
+	edit := h.geometryEdits[id]
+	valid := edit != nil && edit.ready && !edit.active && h.main[id] != nil && !h.peekTransition && h.applied[id].sizeAnimation == nil
+	var change geometryEdit
+	if valid {
+		change = *edit
+	}
 	h.mu.Unlock()
-	if animating {
+	if !valid {
 		return
 	}
 	w, e := h.Service.Store.Window(id)
 	if e != nil {
 		return
 	}
-	b := win.Bounds()
-	screen, _ := win.GetScreen()
+	b := geometryBounds(w, change)
 	if b.Width < 220 || b.Height < 32 || (!w.Collapsed && b.Height < 120) {
 		return
 	}
-	if w.Bounds.X == float64(b.X) && w.Bounds.Y == float64(b.Y) && w.Bounds.Width == float64(b.Width) && w.Bounds.Height == float64(b.Height) {
-		return
+	if w.Bounds != b {
+		w.Bounds = b
+		if !w.Collapsed {
+			w.ExpandedSize = model.Size{Width: b.Width, Height: b.Height}
+		}
+		if e = h.Service.Store.SaveWindow(w); e != nil {
+			h.notifyError(e)
+			return
+		}
 	}
-	w.Bounds.X = float64(b.X)
-	w.Bounds.Y = float64(b.Y)
-	w.Bounds.Width = float64(b.Width)
-	w.Bounds.Height = float64(b.Height)
-	if screen != nil {
-		w.Bounds.DisplayID = screen.ID
+	h.mu.Lock()
+	if h.geometryEdits[id] == edit && !edit.active && edit.after == change.after {
+		delete(h.geometryEdits, id)
 	}
-	if !w.Collapsed {
-		w.ExpandedSize = model.Size{Width: float64(b.Width), Height: float64(b.Height)}
-	}
-	if e = h.Service.Store.SaveWindow(w); e != nil {
-		h.notifyError(e)
-	}
+	h.mu.Unlock()
 }
 func (h *Desktop) correctAll() {
 	h.mu.Lock()
 	wins := map[string]*application.WebviewWindow{}
+	if h.peekActive || h.peekTransition || h.quitting {
+		h.mu.Unlock()
+		return
+	}
 	for id, w := range h.main {
+		if edit := h.geometryEdits[id]; edit != nil && edit.active {
+			continue
+		}
+		if h.applied[id].sizeAnimation != nil {
+			continue
+		}
 		wins[id] = w
 	}
 	h.mu.Unlock()
@@ -720,7 +732,12 @@ func (h *Desktop) correctAll() {
 			continue
 		}
 		b := w.Bounds()
-		x, y, width, height := native.Clamp(b.X, b.Y, b.Width, b.Height, areas)
+		saved, err := h.Service.Store.Window(id)
+		if err != nil {
+			continue
+		}
+		preferred := h.preferredBounds(saved)
+		x, y, width, height := native.Clamp(int(preferred.X), int(preferred.Y), int(preferred.Width), int(preferred.Height), areas)
 		if x != b.X || y != b.Y || width != b.Width || height != b.Height {
 			h.setMainBounds(w, x, y, width, height)
 		}

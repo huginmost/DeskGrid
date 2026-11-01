@@ -17,6 +17,10 @@ type AlignmentGuides struct {
 	horizontal, vertical uintptr
 	parent               uintptr
 	foreground           bool
+	moving               uintptr
+	start                nativeRect
+	cursor               nativePoint
+	mouseDrag            bool
 }
 
 var alignmentClassOnce sync.Once
@@ -71,12 +75,31 @@ func createAlignmentGuide(parent uintptr, foreground bool) uintptr {
 }
 
 func (guides *AlignmentGuides) Clear() {
+	guides.hide()
+	*guides = AlignmentGuides{}
+}
+
+// Hiding a guide must not reset the unconstrained mouse-drag origin.
+func (guides *AlignmentGuides) hide() {
 	for _, hwnd := range []uintptr{guides.horizontal, guides.vertical} {
 		if hwnd != 0 {
 			user32.NewProc("DestroyWindow").Call(hwnd)
 		}
 	}
-	*guides = AlignmentGuides{}
+	guides.horizontal, guides.vertical, guides.parent = 0, 0, 0
+	guides.foreground = false
+}
+
+func (guides *AlignmentGuides) Begin(hwnd uintptr) {
+	guides.Clear()
+	bounds, ok := physicalWindowRect(hwnd)
+	var cursor nativePoint
+	valid, _, _ := user32.NewProc("GetCursorPos").Call(uintptr(unsafe.Pointer(&cursor)))
+	button, _, _ := user32.NewProc("GetAsyncKeyState").Call(1) // VK_LBUTTON
+	if ok && valid != 0 {
+		guides.moving, guides.start, guides.cursor = hwnd, bounds, cursor
+		guides.mouseDrag = button&0x8000 != 0
+	}
 }
 
 func physicalWindowRect(hwnd uintptr) (nativeRect, bool) {
@@ -92,7 +115,7 @@ func nativeWindowVisible(hwnd uintptr) bool {
 
 func (guides *AlignmentGuides) show(horizontal bool, rect nativeRect, parent uintptr, foreground bool) {
 	if guides.parent != parent || guides.foreground != foreground {
-		guides.Clear()
+		guides.hide()
 	}
 	guides.parent, guides.foreground = parent, foreground
 	handle := &guides.vertical
@@ -136,12 +159,26 @@ func (guides *AlignmentGuides) Moving(hwnd, lparam uintptr, siblings []uintptr, 
 	if foreground {
 		parent = 0
 	}
+	if guides.moving != hwnd {
+		guides.Begin(hwnd)
+	}
+	if guides.mouseDrag {
+		var cursor nativePoint
+		if ok, _, _ := user32.NewProc("GetCursorPos").Call(uintptr(unsafe.Pointer(&cursor))); ok != 0 {
+			// WM_MOVING may be based on the last snapped RECT. Reconstruct the
+			// free position from total pointer travel so small moves can escape.
+			width, height := proposed.Right-proposed.Left, proposed.Bottom-proposed.Top
+			proposed.Left = guides.start.Left + cursor.X - guides.cursor.X
+			proposed.Top = guides.start.Top + cursor.Y - guides.cursor.Y
+			proposed.Right, proposed.Bottom = proposed.Left+width, proposed.Top+height
+		}
+	}
 	dpi, _, _ := user32.NewProc("GetDpiForWindow").Call(root)
 	if dpi == 0 {
 		dpi = 96
 	}
 	scale := float64(dpi) / 96
-	threshold := int32(math.Round(8 * scale))
+	threshold := int32(max(1, math.Round(4*scale)))
 	thickness := int32(max(1, math.Round(scale)))
 	margin := int32(math.Round(12 * scale))
 	xDistance, yDistance := threshold+1, threshold+1
@@ -170,7 +207,7 @@ func (guides *AlignmentGuides) Moving(hwnd, lparam uintptr, siblings []uintptr, 
 		}
 	}
 	if xDistance > threshold && yDistance > threshold {
-		guides.Clear()
+		guides.hide()
 		return
 	}
 	if xDistance <= threshold {
@@ -184,7 +221,7 @@ func (guides *AlignmentGuides) Moving(hwnd, lparam uintptr, siblings []uintptr, 
 	// Establish the host mode before drawing either guide; a mode change must
 	// not destroy the first guide while the second one is being positioned.
 	if guides.parent != parent || guides.foreground != foreground {
-		guides.Clear()
+		guides.hide()
 	}
 	guides.parent, guides.foreground = parent, foreground
 	if yDistance <= threshold {

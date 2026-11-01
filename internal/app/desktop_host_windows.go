@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wailsapp/wails/v3/pkg/application"
-	"github.com/wailsapp/wails/v3/pkg/events"
 	"deskgrid/internal/appearance"
 	"deskgrid/internal/model"
 	"deskgrid/internal/shell"
 	native "deskgrid/internal/windows"
+	"github.com/wailsapp/wails/v3/pkg/application"
+	"github.com/wailsapp/wails/v3/pkg/events"
 )
 
 type nativeWindowState struct {
@@ -84,6 +84,8 @@ func (h *Desktop) Apply(w model.Window) {
 					targetWidth = max(220, int(w.Bounds.Width))
 					targetHeight = max(120, int(w.Bounds.Height))
 				}
+				// Fit the current display without replacing preferred JSON bounds.
+				_, _, targetWidth, targetHeight = native.Clamp(int(w.Bounds.X), int(w.Bounds.Y), targetWidth, targetHeight, h.workAreas())
 			}
 			if width != targetWidth || height != targetHeight {
 				if previous.initialized && !g.ReducedMotion && !shell.ReducedMotion() {
@@ -144,12 +146,27 @@ func (h *Desktop) CurrentBounds(id string) (model.Bounds, bool) {
 	win := h.main[id]
 	ready := h.nativeReady[id]
 	animating := h.applied[id].sizeAnimation != nil
+	var change geometryEdit
+	edit := h.geometryEdits[id]
+	if edit != nil {
+		change = *edit
+	}
 	h.mu.Unlock()
 	if win == nil || !ready || animating || !native.IsNativeWindow(uintptr(win.NativeWindow())) {
 		return model.Bounds{}, false
 	}
-	b := win.Bounds()
-	return model.Bounds{X: float64(b.X), Y: float64(b.Y), Width: float64(b.Width), Height: float64(b.Height), Unit: "dip"}, true
+	w, err := h.Service.Store.Window(id)
+	if err != nil {
+		return model.Bounds{}, false
+	}
+	if edit == nil {
+		return w.Bounds, true // Keep the preferred position/size while display-clamped.
+	}
+	if change.active {
+		b := win.Bounds()
+		change.after = model.Bounds{X: float64(b.X), Y: float64(b.Y), Width: float64(b.Width), Height: float64(b.Height), Unit: "dip"}
+	}
+	return geometryBounds(w, change), true
 }
 
 func (h *Desktop) setMainBounds(win *application.WebviewWindow, x, y, width, height int) {
@@ -625,6 +642,7 @@ func (h *Desktop) restoreDesktopWindow(id string) {
 	delete(h.showing, id)
 	delete(h.desktopReady, id)
 	delete(h.applied, id)
+	delete(h.geometryEdits, id)
 	delete(h.desktopParents, id)
 	delete(h.mountErrors, id)
 	h.mu.Unlock()

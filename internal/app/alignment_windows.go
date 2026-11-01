@@ -5,8 +5,8 @@ package app
 import (
 	"log/slog"
 
-	"github.com/wailsapp/wails/v3/pkg/application"
 	native "deskgrid/internal/windows"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // Called by the native window procedure, including forwarded Win+A host moves.
@@ -30,6 +30,7 @@ func (h *Desktop) alignmentMessage(hwnd uintptr, message uint32, wparam, lparam 
 		return 0, false
 	}
 	locked := h.applied[id].positionLocked
+	win := h.main[id]
 	allowed := !h.quitting && !h.startHiddenLocked(id) && (!h.hidden || h.peekActive)
 	siblings := []uintptr{}
 	if message == 0x216 && allowed && !locked {
@@ -42,6 +43,16 @@ func (h *Desktop) alignmentMessage(hwnd uintptr, message uint32, wparam, lparam 
 	h.mu.Unlock()
 	if locked && (message == 0x112 && (wparam&0xfff0 == 0xf010 || wparam&0xfff0 == 0xf000) || message == 0xa1 && (wparam == 2 || wparam >= 10 && wparam <= 17)) {
 		return 0, true // SC_MOVE / SC_SIZE / caption and resize-border dragging.
+	}
+	if message == 0x231 { // WM_ENTERSIZEMOVE: the user, not Windows, owns this edit.
+		if allowed && !locked {
+			h.beginGeometryEdit(id, win)
+			h.alignment.Begin(hwnd)
+		}
+		return 0, false
+	}
+	if message == 0x232 { // WM_EXITSIZEMOVE
+		h.endGeometryEdit(id, win)
 	}
 	if message == 0x216 && lparam != 0 { // WM_MOVING
 		h.alignment.Moving(hwnd, lparam, siblings, locked || !allowed)

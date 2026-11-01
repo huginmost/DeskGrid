@@ -10,10 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wailsapp/wails/v3/pkg/application"
 	"deskgrid/internal/appearance"
 	"deskgrid/internal/shell"
 	native "deskgrid/internal/windows"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type peekWindow struct {
@@ -389,6 +389,8 @@ func (h *Desktop) hidePeekLocked() {
 	for id := range entries {
 		h.scheduleGeometry(id)
 	}
+	// A display may have changed while these HWNDs were temporarily foreground.
+	application.InvokeAsync(h.correctAll)
 }
 
 func (h *Desktop) peekMouseClick(x, y int32) {
