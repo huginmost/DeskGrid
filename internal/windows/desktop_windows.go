@@ -97,6 +97,21 @@ func roundWindow(hwnd uintptr, collapsedHeight int, pixelRatio, radius float64) 
 	}
 	return nil // Windows owns the region after SetWindowRgn succeeds.
 }
+
+// KeepWindowPosition protects a fixed or hidden window during WM_MOVING.
+// Ordinary movable windows never call this function.
+func KeepWindowPosition(hwnd, rectPointer uintptr) bool {
+	if rectPointer == 0 {
+		return false
+	}
+	var bounds nativeRect
+	if ok, _, _ := user32.NewProc("GetWindowRect").Call(peekRoot(hwnd), uintptr(unsafe.Pointer(&bounds))); ok == 0 {
+		return false
+	}
+	*(*nativeRect)(unsafe.Pointer(rectPointer)) = bounds
+	return true
+}
+
 func BeginWindowDrag(hwnd uintptr) error {
 	hwnd = peekRoot(hwnd)
 	user32.NewProc("ReleaseCapture").Call()

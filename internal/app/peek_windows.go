@@ -204,7 +204,6 @@ func (h *Desktop) showPeekLocked() {
 		}
 	}
 	h.mu.Unlock()
-	application.InvokeSync(func() { h.alignment.Clear() })
 	entries := map[string]peekWindow{}
 	var focus *application.WebviewWindow
 	for _, id := range ids {
@@ -324,7 +323,6 @@ func (h *Desktop) hidePeekLocked() {
 		h.peekFocusTimer.Stop()
 	}
 	h.mu.Unlock()
-	application.InvokeSync(func() { h.alignment.Clear() })
 	if input != nil {
 		input.Active(false)
 	}

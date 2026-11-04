@@ -65,12 +65,12 @@ var peekHostProc = syscall.NewCallback(func(hwnd, message, wparam, lparam uintpt
 			if host.child != 0 {
 				user32.NewProc("SendMessageW").Call(host.child, message, wparam, lparam)
 			}
-		case 0x216: // WM_MOVING uses physical screen RECTs for the host and content.
+		case 0x216: // Forward fixed-window protection; free moves are not adjusted.
 			if host.child != 0 {
 				r, _, _ := user32.NewProc("SendMessageW").Call(host.child, message, wparam, lparam)
 				return r
 			}
-		case 0x231, 0x232, 0x1f, 0x215: // Move-loop entry/exit, cancellation and capture loss.
+		case 0x231, 0x232: // Preserve user move/resize sessions for layout persistence.
 			if host.child != 0 {
 				user32.NewProc("SendMessageW").Call(host.child, message, wparam, lparam)
 			}

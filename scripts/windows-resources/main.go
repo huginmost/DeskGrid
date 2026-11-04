@@ -179,11 +179,11 @@ func versionBlock(key string, kind uint16, value []byte, children ...[]byte) []b
 
 func versionInfo() []byte {
 	var fixed []byte
-	for _, value := range []uint32{0xfeef04bd, 0x10000, 0x10000, 0x10000, 0x10000, 0x10000, 0x3f, 0, 0x40004, 1, 0, 0, 0} {
+	for _, value := range []uint32{0xfeef04bd, 0x10000, 0x10000, 0x20000, 0x10000, 0x20000, 0x3f, 0, 0x40004, 1, 0, 0, 0} {
 		fixed = order.AppendUint32(fixed, value)
 	}
 	var strings [][]byte
-	for _, pair := range [][2]string{{"CompanyName", "DeskGrid"}, {"FileDescription", "DeskGrid 桌面整理工具"}, {"FileVersion", "1.0.1.0"}, {"InternalName", "DeskGrid"}, {"OriginalFilename", "DeskGrid.exe"}, {"ProductName", "DeskGrid"}, {"ProductVersion", "1.0.1.0"}} {
+	for _, pair := range [][2]string{{"CompanyName", "DeskGrid"}, {"FileDescription", "DeskGrid 桌面整理工具"}, {"FileVersion", "1.0.2.0"}, {"InternalName", "DeskGrid"}, {"OriginalFilename", "DeskGrid.exe"}, {"ProductName", "DeskGrid"}, {"ProductVersion", "1.0.2.0"}} {
 		strings = append(strings, versionBlock(pair[0], 1, wide(pair[1])))
 	}
 	table := versionBlock("040904B0", 1, nil, strings...)

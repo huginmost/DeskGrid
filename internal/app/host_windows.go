@@ -50,7 +50,6 @@ type Desktop struct {
 	showing          map[string]*windowFade
 	startID          string
 	hideStartWindow  bool
-	alignment        native.AlignmentGuides
 	applied          map[string]nativeWindowState
 	desktopParents   map[string]uintptr
 	mountErrors      map[string]string
@@ -119,7 +118,7 @@ func NewDesktop(store *config.Store, configDir string) *Desktop {
 	h.App = application.New(application.Options{Name: branding.Name, Description: "Windows 桌面文件与快捷入口整理工具", Icon: branding.Icon, LogLevel: slog.LevelWarn,
 		Assets: application.AssetOptions{Handler: application.BundledAssetFileServer(frontend.Assets()), Middleware: func(next http.Handler) http.Handler { return h.Service.Handler(next) }, DisableLogging: true},
 		Windows: application.WindowsOptions{DisableQuitOnLastWindowClosed: true, WebviewUserDataPath: filepath.Join(configDir, "webview"), WndProcInterceptor: func(hwnd uintptr, msg uint32, wparam, lparam uintptr) (uintptr, bool) {
-			if result, handled := h.alignmentMessage(hwnd, msg, wparam, lparam); handled {
+			if result, handled := h.windowInteractionMessage(hwnd, msg, wparam, lparam); handled {
 				return result, true
 			}
 			if result, handled := native.PeekMessage(hwnd, msg, wparam, lparam); handled {
@@ -296,7 +295,6 @@ func (h *Desktop) Open(w model.Window) error {
 		}
 	})
 	win.OnWindowEvent(events.Common.WindowClosing, func(e *application.WindowEvent) {
-		application.InvokeSync(func() { h.alignment.Clear() })
 		h.mu.Lock()
 		quitting := h.quitting
 		current := h.main[w.ID] == win
@@ -390,7 +388,6 @@ func (h *Desktop) Close(id string) {
 	}
 	h.mu.Unlock()
 	if w != nil {
-		application.InvokeSync(func() { h.alignment.Clear() })
 		w.Close()
 	}
 	go h.rebuildTray()
@@ -451,9 +448,6 @@ func (h *Desktop) toggleDesktop() {
 		}
 	}
 	h.mu.Unlock()
-	if hidden {
-		application.InvokeSync(func() { h.alignment.Clear() })
-	}
 	if len(wins) == 0 {
 		if empty {
 			go h.Activate(nil)
@@ -801,7 +795,6 @@ func (h *Desktop) flush() {
 		ids = append(ids, id)
 	}
 	h.mu.Unlock()
-	application.InvokeSync(func() { h.alignment.Clear() })
 	if input != nil {
 		input.Close()
 	}

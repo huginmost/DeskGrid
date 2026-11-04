@@ -801,3 +801,19 @@
 - 执行 `scripts/build.ps1 -SkipInstall -SkipTests` 成功，重新生成图标/版本资源、前端、Windows EXE 与许可证。
 - 程序 SHA256：`DDCA82E0BECF7107442A68DD3346D8525E97D0C5B1220D10AC146E7FF43F465C`。发布说明位于 `docs/RELEASE_NOTES.md`，完整 ZIP 和校验文件由发布脚本生成。
 - 未运行程序或测试，未改动用户配置或执行实际文件操作。
+
+## 2026-11-04：移除窗口吸附，发布 v1.0.2
+
+### BUG-093：移除吸附与对齐参考线
+
+- 按用户要求删除窗口间吸附、临近边缘匹配、DPI 吸附阈值、累计鼠标位移重建与原生参考线窗口，清除桌面及 Win+A 流程中对应的状态和清理调用。
+- 删除 `internal/windows/alignment_windows.go`；原 `internal/app/alignment_windows.go` 改为 `window_interaction_windows.go`，只处理用户移动/缩放记录、固定窗口保护和起始窗口可见性。
+- 普通可移动窗口的 WM_MOVING 建议位置直接交给 Windows，不再改写。保留固定或隐藏窗口的原位保护，不再搜索其他窗口或绘制反馈。
+- 保留分辨率变化后的布局恢复、用户主动摆放保存、磁贴固定限制与文件重命名选区；同步当前 README、构建说明与 prompt.md，历史修复记录保留。
+- 版本统一为 v1.0.2（EXE 为 1.0.2.0）；只进行静态检查、编译、打包与上传，不启动程序、不运行测试、不修改用户配置。
+
+### v1.0.2 编译与发布包
+
+- 执行 `scripts/build.ps1 -SkipInstall -SkipTests` 成功：TypeScript、Vite（1575 modules）、Windows amd64 Go 编译、图标/版本资源生成与许可证收集完成。
+- 程序 SHA256：`89AEDAF567B00F505BF3B0C7F36295D762FC64DEBBDB1BE7404455C65C0B45C6`；发布 ZIP 与校验文件由 `scripts/package.ps1` 生成。
+- 当前源码与编译产物用于 v1.0.2；发布说明见 `docs/RELEASE_NOTES.md`。历史发布保留，不运行程序或测试。

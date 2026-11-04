@@ -60,7 +60,7 @@ release/
 | 目录 | 职责 |
 | --- | --- |
 | `internal/app` | 组合服务、窗口、桌面挂载、动画和交互 |
-| `internal/windows` | Windows 桌面层、菜单、快捷键、IPC、吸附参考线 |
+| `internal/windows` | Windows 桌面层、菜单、快捷键、IPC、窗口位置保护 |
 | `internal/shell` | Shell、剪贴板、图标提取、终端和系统集成 |
 | `internal/filesystem` | 文件操作、目录监听与移动撤销 |
 | `internal/config`、`internal/model` | JSON 配置与数据模型 |
